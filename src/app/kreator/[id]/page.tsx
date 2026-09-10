@@ -625,13 +625,21 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ id: s
           <div className="lg:w-96 flex-shrink-0 mb-10 lg:mb-0">
             <div className="sticky top-28">
               {/* Photo */}
-              <div className="aspect-[3/4] relative rounded-3xl overflow-hidden mb-4">
-                <Image
-                  src={creator.photo}
-                  alt={creator.name}
-                  fill
-                  className="object-cover"
-                />
+              <div className="aspect-[3/4] relative rounded-3xl overflow-hidden mb-4 bg-secondary">
+                {creator.photo ? (
+                  <Image
+                    src={creator.photo}
+                    alt={creator.name}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                    <span className="text-6xl font-light text-primary/40">
+                      {creator.name?.charAt(0) || '?'}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Own Profile Banner - Dark */}

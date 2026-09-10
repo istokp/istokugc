@@ -842,8 +842,12 @@ export default function AdminPage() {
                       {/* Mobile layout */}
                       <div className="sm:hidden">
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="w-14 h-14 rounded-full overflow-hidden relative flex-shrink-0">
-                            <Image src={creator.photo} alt={creator.name} fill className="object-cover" />
+                          <div className="w-14 h-14 rounded-full overflow-hidden relative flex-shrink-0 bg-secondary flex items-center justify-center">
+                            {creator.photo ? (
+                              <Image src={creator.photo} alt={creator.name} fill className="object-cover" />
+                            ) : (
+                              <span className="text-lg font-medium text-muted">{creator.name?.charAt(0) || '?'}</span>
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <h3 className="font-medium text-base truncate">{creator.name}</h3>
@@ -911,8 +915,12 @@ export default function AdminPage() {
                       {/* Desktop layout */}
                       <div className="hidden sm:block">
                         <div className="flex items-start gap-6">
-                          <div className="w-20 h-20 rounded-full overflow-hidden relative flex-shrink-0">
-                            <Image src={creator.photo} alt={creator.name} fill className="object-cover" />
+                          <div className="w-20 h-20 rounded-full overflow-hidden relative flex-shrink-0 bg-secondary flex items-center justify-center">
+                            {creator.photo ? (
+                              <Image src={creator.photo} alt={creator.name} fill className="object-cover" />
+                            ) : (
+                              <span className="text-2xl font-medium text-muted">{creator.name?.charAt(0) || '?'}</span>
+                            )}
                           </div>
                           
                           <div className="flex-1">
@@ -1010,8 +1018,12 @@ export default function AdminPage() {
                     {filteredCreators.map((creator) => (
                       <div key={creator.id} className="border border-border rounded-xl p-4">
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="w-12 h-12 rounded-full overflow-hidden relative flex-shrink-0">
-                            <Image src={creator.photo} alt="" fill className="object-cover" />
+                          <div className="w-12 h-12 rounded-full overflow-hidden relative flex-shrink-0 bg-secondary flex items-center justify-center">
+                            {creator.photo ? (
+                              <Image src={creator.photo} alt="" fill className="object-cover" />
+                            ) : (
+                              <span className="text-sm font-medium text-muted">{creator.name?.charAt(0) || '?'}</span>
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="font-medium text-sm truncate">{creator.name}</div>
@@ -1107,8 +1119,12 @@ export default function AdminPage() {
                           <tr key={creator.id} className="border-b border-border">
                             <td className="py-4">
                               <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full overflow-hidden relative">
-                                  <Image src={creator.photo} alt="" fill className="object-cover" />
+                                <div className="w-10 h-10 rounded-full overflow-hidden relative bg-secondary flex items-center justify-center">
+                                  {creator.photo ? (
+                                    <Image src={creator.photo} alt="" fill className="object-cover" />
+                                  ) : (
+                                    <span className="text-sm font-medium text-muted">{creator.name?.charAt(0) || '?'}</span>
+                                  )}
                                 </div>
                                 <div>
                                   <div className="font-medium">{creator.name}</div>
@@ -1629,8 +1645,12 @@ export default function AdminPage() {
               <div className="px-4 sm:px-6 py-6">
                 {/* Profile header */}
                 <div className="flex items-start gap-4 mb-6">
-                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden relative flex-shrink-0 bg-secondary">
-                    <Image src={viewingCreator.photo} alt={viewingCreator.name} fill className="object-cover" />
+                  <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden relative flex-shrink-0 bg-secondary flex items-center justify-center">
+                    {viewingCreator.photo ? (
+                      <Image src={viewingCreator.photo} alt={viewingCreator.name} fill className="object-cover" />
+                    ) : (
+                      <span className="text-2xl font-medium text-muted">{viewingCreator.name?.charAt(0) || '?'}</span>
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-xl font-medium truncate">{viewingCreator.name}</h3>

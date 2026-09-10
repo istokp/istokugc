@@ -35,6 +35,7 @@ export default function RegisterCreatorPage() {
   // API state
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [photoUploadFailed, setPhotoUploadFailed] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
   const [step, setStep] = useState(1);
@@ -285,13 +286,16 @@ export default function RegisterCreatorPage() {
       return;
     }
     
-    if (file.size > 5 * 1024 * 1024) {
-      alert('Slika je prevelika. Maksimalna veličina je 5MB.');
+    if (file.size > 10 * 1024 * 1024) {
+      alert('Slika je prevelika. Maksimalna veličina je 10MB.');
       return;
     }
-    
-    setFormData(prev => ({ ...prev, photo: file }));
-    setPhotoPreview(URL.createObjectURL(file));
+
+    // Isti put kao klik-za-izbor: otvori cropper da bi photoPreview postao
+    // data:image base64 (obavezno za FAZA 2 upload - blob: URL se tiho preskače).
+    const imageUrl = URL.createObjectURL(file);
+    setOriginalPhoto(imageUrl);
+    setShowCropper(true);
   };
 
   const handlePhotoDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -440,6 +444,7 @@ export default function RegisterCreatorPage() {
         const creatorId: string | undefined = data.creatorId;
 
         // FAZA 2: login + upload profilne slike + portfolio fajlova (nalog već postoji)
+        let uploadFailed = false;
         if (creatorId && (photoPreview || fileItems.length > 0)) {
           try {
             const supabase = createClient();
@@ -486,19 +491,25 @@ export default function RegisterCreatorPage() {
               }
             }
           } catch (uploadErr) {
-            // Nalog postoji - ne blokiraj registraciju zbog neuspelog uploada.
+            // Nalog postoji - ne blokiraj registraciju zbog neuspelog uploada,
+            // ali NE preusmeravaj automatski da korisnik stigne da pročita poruku
+            // i sam odluči kad da nastavi (inače je tiho ostajao bez slike).
             console.error('Post-registration upload error:', uploadErr);
             setApiError(
               'Nalog je kreiran, ali otpremanje slike/fajlova nije uspelo. ' +
               'Možeš ih dodati kasnije iz svog profila.'
             );
+            uploadFailed = true;
+            setPhotoUploadFailed(true);
           }
         }
 
         console.log('Registration successful:', data);
 
-        // Redirect na stranicu čekanja
-        router.push('/register/kreator/cekanje');
+        if (!uploadFailed) {
+          // Redirect na stranicu čekanja
+          router.push('/register/kreator/cekanje');
+        }
 
       } catch (error) {
         console.error('Registration error:', error);
@@ -1003,6 +1014,15 @@ export default function RegisterCreatorPage() {
           {apiError && (
             <div className="bg-error/10 border border-error/20 rounded-xl p-4 mt-6">
               <p className="text-sm text-error">{apiError}</p>
+              {photoUploadFailed && (
+                <button
+                  type="button"
+                  onClick={() => router.push('/register/kreator/cekanje')}
+                  className="mt-3 text-sm font-medium text-foreground underline hover:no-underline"
+                >
+                  Nastavi bez slike →
+                </button>
+              )}
             </div>
           )}
 

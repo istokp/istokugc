@@ -98,12 +98,18 @@ export default function Home() {
                   }`}
                   style={{ aspectRatio: index === 0 ? '3/4' : '1/1' }}
                 >
-                  <Image
-                    src={creator.photo}
-                    alt={creator.name}
-                    fill
-                    className="object-cover"
-                  />
+                  {creator.photo ? (
+                    <Image
+                      src={creator.photo}
+                      alt={creator.name}
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                      <span className="text-4xl font-light text-primary/40">{creator.name?.charAt(0) || '?'}</span>
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
                   <div className="absolute bottom-4 left-4 text-white">
                     <div className="font-medium">{creator.name}</div>
@@ -295,13 +301,19 @@ export default function Home() {
             {featuredCreators.map((creator) => (
               <Link key={creator.id} href={`/kreator/${creator.id}`}>
                 <div className="group">
-                  <div className="aspect-[3/4] sm:aspect-[4/5] relative rounded-xl sm:rounded-2xl overflow-hidden mb-2 sm:mb-4">
-                    <Image
-                      src={creator.photo}
-                      alt={creator.name}
-                      fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-500"
-                    />
+                  <div className="aspect-[3/4] sm:aspect-[4/5] relative rounded-xl sm:rounded-2xl overflow-hidden mb-2 sm:mb-4 bg-secondary">
+                    {creator.photo ? (
+                      <Image
+                        src={creator.photo}
+                        alt={creator.name}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+                        <span className="text-4xl font-light text-primary/40">{creator.name?.charAt(0) || '?'}</span>
+                      </div>
+                    )}
                   </div>
                   <h3 className="font-medium text-sm sm:text-base truncate">{creator.name}</h3>
                   <p className="text-xs sm:text-sm text-muted truncate">{creator.categories[0]} • {creator.location}</p>
