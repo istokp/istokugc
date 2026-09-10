@@ -13,6 +13,7 @@ import type { CreateReviewInput } from '@/types/review';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { createClient } from '@/lib/supabase/client';
 import { getPortfolioVideoType, isPortfolioVideo } from '@/lib/portfolio-media';
+import { PAYMENTS_REQUIRED } from '@/lib/payments-config';
 
 export default function CreatorProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -367,6 +368,7 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ id: s
   // Check if business user has active subscription - use live status if available
   // IMPORTANT: User keeps access until expires_at, even if they cancelled!
   const hasActiveSubscription = useMemo(() => {
+    if (!PAYMENTS_REQUIRED) return true;
     if (currentUser.type === 'admin' || currentUser.type === 'creator') return true;
     if (currentUser.type === 'business') {
       const statusToCheck = liveSubscriptionStatus || currentUser.subscriptionStatus;
