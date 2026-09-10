@@ -18,6 +18,14 @@ export function normalizeExternalUrl(url: string): string {
   return /^(https?:)?\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
 }
 
+// Instagram/TikTok ne mogu da se prikažu inline (nema pravog embed-a), pa
+// nema smisla otvarati poseban popup sa "Otvori na X" dugmetom - klik odmah
+// otvara pravi video na platformi u novom tabu. YouTube i upload video se i
+// dalje puštaju inline kroz VideoPlayerModal.
+export function opensExternally(type: string): boolean {
+  return type === 'instagram' || type === 'tiktok';
+}
+
 export type PortfolioVideoType = 'youtube' | 'instagram' | 'tiktok' | 'upload';
 
 export function getPortfolioVideoType(item: {

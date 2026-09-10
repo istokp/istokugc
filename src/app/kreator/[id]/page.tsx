@@ -12,7 +12,7 @@ import { generateReviewStats } from '@/types/review';
 import type { CreateReviewInput } from '@/types/review';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
 import { createClient } from '@/lib/supabase/client';
-import { getPortfolioVideoType, isPortfolioVideo } from '@/lib/portfolio-media';
+import { getPortfolioVideoType, isPortfolioVideo, opensExternally, normalizeExternalUrl } from '@/lib/portfolio-media';
 import { PAYMENTS_REQUIRED } from '@/lib/payments-config';
 
 // Kreatori unose samo handle (npr. "@milicadigitals"), pa ovde gradimo pravi link ka profilu.
@@ -942,12 +942,16 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ id: s
                         className={`group relative aspect-square rounded-2xl overflow-hidden cursor-pointer ${isImage ? 'hover:scale-105 transition-transform duration-300' : ''}`}
                         onClick={() => {
                           if (isVideo) {
-                            setActiveVideo({
-                              url: item.url,
-                              type: item.type,
-                              originalUrl: item.url,
-                              description: item.description
-                            });
+                            if (opensExternally(item.type)) {
+                              window.open(normalizeExternalUrl(item.url), '_blank', 'noopener,noreferrer');
+                            } else {
+                              setActiveVideo({
+                                url: item.url,
+                                type: item.type,
+                                originalUrl: item.url,
+                                description: item.description
+                              });
+                            }
                           } else {
                             setActiveImage({
                               url: item.url,
@@ -1114,12 +1118,17 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ id: s
                   <button
                     onClick={() => {
                       setPortfolioDetail(null);
-                      setActiveVideo({
-                        url: portfolioDetail.url,
-                        type: getPortfolioVideoType(portfolioDetail),
-                        originalUrl: portfolioDetail.url,
-                        description: portfolioDetail.description
-                      });
+                      const detailType = getPortfolioVideoType(portfolioDetail);
+                      if (opensExternally(detailType)) {
+                        window.open(normalizeExternalUrl(portfolioDetail.url), '_blank', 'noopener,noreferrer');
+                      } else {
+                        setActiveVideo({
+                          url: portfolioDetail.url,
+                          type: detailType,
+                          originalUrl: portfolioDetail.url,
+                          description: portfolioDetail.description
+                        });
+                      }
                     }}
                     className="mt-6 w-full py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
                   >

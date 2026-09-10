@@ -8,7 +8,7 @@ import { Creator, CreatorStatus, Review } from '@/lib/mockData';
 import ReviewCard from '@/components/ReviewCard';
 import StarRating from '@/components/StarRating';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
-import { getPortfolioVideoType, isPortfolioVideo, normalizeExternalUrl } from '@/lib/portfolio-media';
+import { getPortfolioVideoType, isPortfolioVideo, normalizeExternalUrl, opensExternally } from '@/lib/portfolio-media';
 
 type AdminTab = 'pending' | 'creators' | 'businesses' | 'categories' | 'reviews' | 'poslovi';
 
@@ -1752,7 +1752,11 @@ export default function AdminPage() {
                           key={index}
                           onClick={() => {
                             if (isPortfolioVideo(item)) {
-                              setViewingPortfolioVideo(item);
+                              if (opensExternally(getPortfolioVideoType(item))) {
+                                window.open(normalizeExternalUrl(item.url), '_blank', 'noopener,noreferrer');
+                              } else {
+                                setViewingPortfolioVideo(item);
+                              }
                             } else {
                               setViewingPortfolioItem(item);
                             }
@@ -2003,7 +2007,11 @@ export default function AdminPage() {
                             type="button"
                             onClick={() => {
                               if (isPortfolioVideo(item)) {
-                                setViewingPortfolioVideo(item);
+                                if (item.url && opensExternally(getPortfolioVideoType(item))) {
+                                  window.open(normalizeExternalUrl(item.url), '_blank', 'noopener,noreferrer');
+                                } else {
+                                  setViewingPortfolioVideo(item);
+                                }
                               } else {
                                 setViewingPortfolioItem(item);
                               }

@@ -12,7 +12,7 @@ import PortfolioModal, { PortfolioItem } from '@/components/PortfolioModal';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
 import ImageCropper from '@/components/ImageCropper';
 import ChatModal from '@/components/ChatModal';
-import { getPortfolioVideoType, isPortfolioVideo } from '@/lib/portfolio-media';
+import { getPortfolioVideoType, isPortfolioVideo, opensExternally, normalizeExternalUrl } from '@/lib/portfolio-media';
 import { PAYMENTS_REQUIRED } from '@/lib/payments-config';
 
 export default function DashboardPage() {
@@ -1142,7 +1142,11 @@ function CreatorDashboard() {
                           className={`aspect-square relative rounded-xl overflow-hidden group cursor-pointer ${isImage ? 'hover:scale-105 transition-transform duration-300' : ''}`}
                           onClick={() => {
                             if (isVideo) {
-                              setActiveVideo(item);
+                              if (opensExternally(getPortfolioVideoType(item))) {
+                                window.open(normalizeExternalUrl(item.url), '_blank', 'noopener,noreferrer');
+                              } else {
+                                setActiveVideo(item);
+                              }
                             } else {
                               setActiveImage(item);
                             }
@@ -1350,7 +1354,11 @@ function CreatorDashboard() {
                           <button
                             onClick={() => {
                               setDetailItem(null);
-                              setActiveVideo(detailItem);
+                              if (opensExternally(getPortfolioVideoType(detailItem))) {
+                                window.open(normalizeExternalUrl(detailItem.url), '_blank', 'noopener,noreferrer');
+                              } else {
+                                setActiveVideo(detailItem);
+                              }
                             }}
                             className="mt-6 w-full py-2.5 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
                           >
