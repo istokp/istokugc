@@ -4,6 +4,7 @@ import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { uploadPortfolioFileToR2 } from '@/lib/upload-client';
 import { compressImage } from '@/lib/image-compress';
+import { VIDEO_PLACEHOLDER_THUMBNAIL } from '@/lib/portfolio-media';
 import {
   MAX_IMAGE_BYTES,
   IMAGE_TYPES,
@@ -55,20 +56,20 @@ function parseMediaUrl(url: string): { type: PortfolioItem['type']; thumbnail: s
     
     // Instagram
     if (urlLower.includes('instagram.com')) {
-      // Instagram doesn't allow direct thumbnail access, use a gradient placeholder
+      // Instagram doesn't allow direct thumbnail access, use our own placeholder
       return {
         type: 'instagram',
-        thumbnail: 'https://images.unsplash.com/photo-1611262588024-d12430b98920?w=300&h=400&fit=crop', // Instagram-style placeholder
+        thumbnail: VIDEO_PLACEHOLDER_THUMBNAIL,
         originalUrl: url
       };
     }
-    
+
     // TikTok
     if (urlLower.includes('tiktok.com')) {
       // TikTok also doesn't allow direct thumbnail access
       return {
         type: 'tiktok',
-        thumbnail: 'https://images.unsplash.com/photo-1611605698335-8b1569810432?w=300&h=400&fit=crop', // TikTok-style placeholder
+        thumbnail: VIDEO_PLACEHOLDER_THUMBNAIL,
         originalUrl: url
       };
     }
@@ -209,7 +210,7 @@ export default function PortfolioModal({ isOpen, onClose, onAdd, creatorId }: Po
           id: `upload-${Date.now()}`,
           type: 'upload',
           url: result.url,
-          thumbnail: result.isVideo ? '/video-thumbnail.jpg' : result.url,
+          thumbnail: result.isVideo ? VIDEO_PLACEHOLDER_THUMBNAIL : result.url,
           description: description.trim() || undefined,
           platform: selectedPlatform,
         };

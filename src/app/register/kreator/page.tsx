@@ -9,6 +9,7 @@ import ImageCropper from '@/components/ImageCropper';
 import { createClient } from '@/lib/supabase/client';
 import { uploadPortfolioFileToR2, safeJson } from '@/lib/upload-client';
 import { compressImage } from '@/lib/image-compress';
+import { VIDEO_PLACEHOLDER_THUMBNAIL } from '@/lib/portfolio-media';
 import CityAutocomplete, { City, cityLabel } from '@/components/CityAutocomplete';
 import {
   MAX_IMAGE_BYTES,
@@ -235,7 +236,7 @@ export default function RegisterCreatorPage() {
     }
 
     // Za YouTube izvuci pravi thumbnail snimka; za TikTok/Instagram placeholder
-    let thumbnail = 'https://images.unsplash.com/photo-1611162616475-46b635cb6868?w=300&h=400&fit=crop';
+    let thumbnail = VIDEO_PLACEHOLDER_THUMBNAIL;
     if (type === 'youtube') {
       let videoId = '';
       if (portfolioUrl.includes('youtu.be/')) {
@@ -474,7 +475,7 @@ export default function RegisterCreatorPage() {
                   id: item.id,
                   type: 'upload',
                   url: result.url,
-                  thumbnail: result.isVideo ? '/video-thumbnail.jpg' : result.url,
+                  thumbnail: result.isVideo ? VIDEO_PLACEHOLDER_THUMBNAIL : result.url,
                   description: item.description,
                   platform: item.platform || 'other',
                 });
