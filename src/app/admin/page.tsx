@@ -8,7 +8,7 @@ import { Creator, CreatorStatus, Review } from '@/lib/mockData';
 import ReviewCard from '@/components/ReviewCard';
 import StarRating from '@/components/StarRating';
 import VideoPlayerModal from '@/components/VideoPlayerModal';
-import { getPortfolioVideoType, isPortfolioVideo } from '@/lib/portfolio-media';
+import { getPortfolioVideoType, isPortfolioVideo, normalizeExternalUrl } from '@/lib/portfolio-media';
 
 type AdminTab = 'pending' | 'creators' | 'businesses' | 'categories' | 'reviews' | 'poslovi';
 
@@ -3020,7 +3020,7 @@ export default function AdminPage() {
 
             {viewingPortfolioItem.url && (
               <a
-                href={viewingPortfolioItem.url}
+                href={normalizeExternalUrl(viewingPortfolioItem.url)}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="absolute bottom-4 right-4 text-white/80 text-xs underline hover:text-white"

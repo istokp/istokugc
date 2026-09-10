@@ -8,6 +8,16 @@
 export const VIDEO_PLACEHOLDER_THUMBNAIL =
   'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjUwMCIgdmlld0JveD0iMCAwIDQwMCA1MDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+CiAgPGRlZnM+CiAgICA8bGluZWFyR3JhZGllbnQgaWQ9ImJnIiB4MT0iMCIgeTE9IjAiIHgyPSIxIiB5Mj0iMSI+CiAgICAgIDxzdG9wIG9mZnNldD0iMCUiIHN0b3AtY29sb3I9IiNmNWY1ZjUiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSIxMDAlIiBzdG9wLWNvbG9yPSIjZTVlNWU1Ii8+CiAgICA8L2xpbmVhckdyYWRpZW50PgogIDwvZGVmcz4KICA8cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjUwMCIgZmlsbD0idXJsKCNiZykiLz4KICA8Y2lyY2xlIGN4PSIyMDAiIGN5PSIyNTAiIHI9IjQ4IiBmaWxsPSIjMWExYTFhIi8+CiAgPHBhdGggZD0iTTE4NiAyMjggTDIyMiAyNTAgTDE4NiAyNzIgWiIgZmlsbD0iI2ZmZmZmZiIvPgo8L3N2Zz4K';
 
+// Neki stariji portfolio linkovi su sačuvani bez http(s):// prefiksa
+// (npr. "www.tiktok.com/@..."). Kao <a href> to se tretira kao relativna
+// putanja unutar sajta (npr. /kreator/www.tiktok.com/@...) umesto spoljni
+// link. Normalizuj pre upotrebe u bilo kom href-u.
+export function normalizeExternalUrl(url: string): string {
+  if (!url) return url;
+  const trimmed = url.trim();
+  return /^(https?:)?\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+}
+
 export type PortfolioVideoType = 'youtube' | 'instagram' | 'tiktok' | 'upload';
 
 export function getPortfolioVideoType(item: {

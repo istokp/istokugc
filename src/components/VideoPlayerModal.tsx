@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
+import { normalizeExternalUrl } from '@/lib/portfolio-media';
 
 interface VideoPlayerModalProps {
   isOpen: boolean;
@@ -82,7 +83,7 @@ export default function VideoPlayerModal({
   };
 
   const renderPlayer = () => {
-    const url = originalUrl || videoUrl;
+    const url = normalizeExternalUrl(originalUrl || videoUrl);
     
     // For uploaded videos (data URLs or blob URLs)
     if (videoType === 'upload' || videoUrl.startsWith('data:') || videoUrl.startsWith('blob:')) {

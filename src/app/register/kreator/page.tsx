@@ -217,17 +217,18 @@ export default function RegisterCreatorPage() {
       setPortfolioError('Molimo unesite URL');
       return;
     }
+    const portfolioUrlTrimmed = portfolioUrl.trim();
 
     let type: 'youtube' | 'tiktok' | 'instagram' = 'youtube';
     let platform: 'instagram' | 'tiktok' | 'youtube' = 'youtube';
     
-    if (portfolioUrl.includes('youtube.com') || portfolioUrl.includes('youtu.be')) {
+    if (portfolioUrlTrimmed.includes('youtube.com') || portfolioUrlTrimmed.includes('youtu.be')) {
       type = 'youtube';
       platform = 'youtube';
-    } else if (portfolioUrl.includes('tiktok.com')) {
+    } else if (portfolioUrlTrimmed.includes('tiktok.com')) {
       type = 'tiktok';
       platform = 'tiktok';
-    } else if (portfolioUrl.includes('instagram.com')) {
+    } else if (portfolioUrlTrimmed.includes('instagram.com')) {
       type = 'instagram';
       platform = 'instagram';
     } else {
@@ -239,12 +240,12 @@ export default function RegisterCreatorPage() {
     let thumbnail = VIDEO_PLACEHOLDER_THUMBNAIL;
     if (type === 'youtube') {
       let videoId = '';
-      if (portfolioUrl.includes('youtu.be/')) {
-        videoId = portfolioUrl.split('youtu.be/')[1]?.split(/[?&]/)[0] || '';
-      } else if (portfolioUrl.includes('/shorts/')) {
-        videoId = portfolioUrl.split('/shorts/')[1]?.split(/[?&]/)[0] || '';
-      } else if (portfolioUrl.includes('v=')) {
-        videoId = portfolioUrl.split('v=')[1]?.split('&')[0] || '';
+      if (portfolioUrlTrimmed.includes('youtu.be/')) {
+        videoId = portfolioUrlTrimmed.split('youtu.be/')[1]?.split(/[?&]/)[0] || '';
+      } else if (portfolioUrlTrimmed.includes('/shorts/')) {
+        videoId = portfolioUrlTrimmed.split('/shorts/')[1]?.split(/[?&]/)[0] || '';
+      } else if (portfolioUrlTrimmed.includes('v=')) {
+        videoId = portfolioUrlTrimmed.split('v=')[1]?.split('&')[0] || '';
       }
       if (videoId) {
         thumbnail = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
@@ -254,7 +255,7 @@ export default function RegisterCreatorPage() {
     const newItem: PortfolioItem = {
       id: `url-${Date.now()}`,
       type,
-      url: portfolioUrl,
+      url: portfolioUrlTrimmed,
       thumbnail,
       description: portfolioDescription,
       platform,

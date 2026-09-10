@@ -31,8 +31,9 @@ interface PortfolioModalProps {
 }
 
 // Helper to extract video ID and create thumbnail from URLs
-function parseMediaUrl(url: string): { type: PortfolioItem['type']; thumbnail: string; originalUrl: string } | null {
+function parseMediaUrl(rawUrl: string): { type: PortfolioItem['type']; thumbnail: string; originalUrl: string } | null {
   try {
+    const url = rawUrl.trim();
     const urlLower = url.toLowerCase();
     
     // YouTube
