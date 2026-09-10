@@ -35,7 +35,7 @@ interface Creator {
 }
 
 export default function KreatoriPage() {
-  const { user, userData, creatorProfile, businessProfile, isLoading: authLoading } = useSupabaseUser();
+  const { user, userData, creatorProfile, isLoading: authLoading } = useSupabaseUser();
   
   // State for creators from API
   const [creators, setCreators] = useState<Creator[]>([]);
@@ -59,25 +59,8 @@ export default function KreatoriPage() {
   // Lokacija (server-side filter)
   const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [includeNearby, setIncludeNearby] = useState<boolean>(false);
-  const [autoNearApplied, setAutoNearApplied] = useState<boolean>(false);
 
-  // Biznis: podrazumevano prikaži kreatore blizu njega (može ručno da promeni)
-  useEffect(() => {
-    if (autoNearApplied) return;
-    if (userType === 'business' && businessProfile?.city_id && businessProfile.lat != null && businessProfile.lng != null) {
-      setAutoNearApplied(true);
-      fetch(`/api/cities/${businessProfile.city_id}`)
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.city) {
-            setSelectedCity(d.city);
-            setIncludeNearby(true);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [userType, businessProfile, autoNearApplied]);
-  
+
   // Fetch creators from API
   useEffect(() => {
     const fetchCreators = async () => {
