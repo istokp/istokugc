@@ -3538,20 +3538,6 @@ function BusinessDashboard() {
                 </Link>
               </div>
             </div>
-
-            {/* Support */}
-            <div className="bg-primary text-white rounded-2xl p-6">
-              <h3 className="font-medium mb-2">Treba ti pomoć?</h3>
-              <p className="text-sm text-white/70 mb-4">
-                Naš tim je tu da ti pomogne. Pošalji nam email i odgovorićemo u najkraćem roku.
-              </p>
-              <a
-                href="mailto:hello@ugcexecutive.com"
-                className="block w-full py-3 bg-white text-primary rounded-xl text-sm font-medium hover:bg-white/90 transition-colors text-center"
-              >
-                hello@ugcexecutive.com
-              </a>
-            </div>
           </div>
         </div>
         )}
