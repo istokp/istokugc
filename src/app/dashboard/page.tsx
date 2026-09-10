@@ -2845,7 +2845,8 @@ function BusinessDashboard() {
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Main content */}
           <div className="lg:col-span-2 space-y-8">
-            {/* Subscription status */}
+            {/* Subscription status (isključeno dok je PAYMENTS_REQUIRED false - vidi src/lib/payments-config.ts) */}
+            {PAYMENTS_REQUIRED && (
             <div className={`rounded-2xl p-6 border ${
               subscription.status === 'active' 
                 ? subscription.cancelAtPeriodEnd 
@@ -3039,6 +3040,7 @@ function BusinessDashboard() {
               )}
 
             </div>
+            )}
 
             {/* Toast: uspešna promena plana */}
             {changePlanSuccess && (
