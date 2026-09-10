@@ -38,10 +38,11 @@ export const businessRegistrationSchema = z.object({
   cityId: z.number().int().positive().optional().nullable(),
   lat: z.number().optional().nullable(),
   lng: z.number().optional().nullable(),
-  // Stripe sessionId je OBAVEZAN - server retrieves session i validira da je placeno.
-  // Nikad ne primamo customer/subscription IDs ili plan iz klijenta - svi izvori istine
-  // dolaze iz Stripe API-ja preko ovog sessionId-ja.
-  sessionId: z.string().min(10, 'Stripe session ID je obavezan'),
+  // Stripe sessionId - obavezan SAMO dok je PAYMENTS_REQUIRED uključeno (runtime
+  // provera u api/auth/register/business/route.ts). Kad je poslat, server retrieves
+  // session i validira da je placeno. Nikad ne primamo customer/subscription IDs ili
+  // plan iz klijenta - svi izvori istine dolaze iz Stripe API-ja preko ovog sessionId-ja.
+  sessionId: z.string().min(10, 'Stripe session ID je obavezan').optional(),
 });
 
 export const creatorUpdateSchema = z.object({

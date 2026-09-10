@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
 import { getAuthUser, getOptionalAuthUser } from '@/lib/auth-helper';
+import { PAYMENTS_REQUIRED } from '@/lib/payments-config';
 
 // Force dynamic rendering - no caching
 export const dynamic = 'force-dynamic';
@@ -184,7 +185,8 @@ export async function POST(request: NextRequest) {
     const supabase = createAdminClient();
     
     // 🔒 BEZBEDNOSNA PROVERA: Biznis mora imati aktivnu pretplatu
-    if (user?.role === 'business' && !userIsAdmin) {
+    // (isključeno dok je PAYMENTS_REQUIRED false - vidi src/lib/payments-config.ts)
+    if (PAYMENTS_REQUIRED && user?.role === 'business' && !userIsAdmin) {
       const { data: business } = await supabase
         .from('businesses')
         .select('subscription_status, expires_at')

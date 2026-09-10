@@ -7,6 +7,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { NextResponse } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
+import { PAYMENTS_REQUIRED } from '@/lib/payments-config';
 
 export interface AuthUser {
   id: string;
@@ -134,6 +135,7 @@ export async function businessHasActiveSubscription(
   supabaseAdmin: { from: (t: string) => any },
   businessUserId: string
 ): Promise<boolean> {
+  if (!PAYMENTS_REQUIRED) return true;
   const { data } = await supabaseAdmin
     .from('businesses')
     .select('subscription_status, expires_at')

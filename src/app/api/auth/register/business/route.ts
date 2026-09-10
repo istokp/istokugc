@@ -3,17 +3,22 @@ import { createClient } from '@supabase/supabase-js';
 import { getAuthLimiter, checkRateLimit, getClientIp } from '@/lib/rate-limit';
 import { businessRegistrationSchema, validate } from '@/lib/validations';
 import { stripe, resolvePlanFromSubscription, getSubscriptionPeriodEnd } from '@/lib/stripe';
+import { PAYMENTS_REQUIRED } from '@/lib/payments-config';
 
 // POST /api/auth/register/business
-// Registracija novog biznisa NAKON uspesnog Stripe placanja.
+// Registracija novog biznisa.
 //
-// BEZBEDNOST: Klijent salje samo `sessionId` Stripe Checkout session-a.
-// Server zatim:
+// Kad je PAYMENTS_REQUIRED uključen (podrazumevano): registracija je NAKON
+// uspesnog Stripe placanja. Klijent salje samo `sessionId` Stripe Checkout
+// session-a. Server zatim:
 //   1. Retrieve session iz Stripe API-ja (live)
 //   2. Validira `payment_status === 'paid'` i `mode === 'subscription'`
 //   3. Validira da je Subscription `active` ili `trialing`
 //   4. Cita customer_id, subscription_id, plan i `current_period_end` IZ Stripe-a
 // Klijent NIKAD ne moze da postavi `subscription_status: 'active'` bez naplate.
+//
+// Kad je PAYMENTS_REQUIRED iskljucen (privremeno, do daljnjeg): ceo Stripe
+// blok se preskace i biznis se kreira odmah sa subscription_status: 'none'.
 export async function POST(request: NextRequest) {
   try {
     const rateLimited = await checkRateLimit(getAuthLimiter(), getClientIp(request));
@@ -40,70 +45,86 @@ export async function POST(request: NextRequest) {
       sessionId,
     } = validated;
 
-    // 1. KLJUCNA PROVERA: Validiraj Stripe Checkout session na serveru
-    let session;
-    try {
-      session = await stripe.checkout.sessions.retrieve(sessionId, {
-        expand: ['subscription', 'customer'],
-      });
-    } catch {
-      return NextResponse.json(
-        { error: 'Plaćanje nije pronađeno. Molimo pokušajte ponovo ili pišite na hello@ugcexecutive.com.' },
-        { status: 400 }
-      );
-    }
+    let plan: 'monthly' | 'yearly' | null = null;
+    let subscriptionStatus: 'active' | 'trialing' | 'none' = 'none';
+    let periodEnd: Date | null = null;
+    let stripeCustomerId: string | null = null;
+    let stripeSubscriptionId: string | null = null;
+    let stripeEmail: string | null = null;
 
-    if (session.mode !== 'subscription') {
-      return NextResponse.json(
-        { error: 'Nevažeća sesija plaćanja.' },
-        { status: 400 }
-      );
-    }
+    if (PAYMENTS_REQUIRED) {
+      if (!sessionId) {
+        return NextResponse.json({ error: 'Stripe session ID je obavezan' }, { status: 400 });
+      }
 
-    if (session.payment_status !== 'paid') {
-      return NextResponse.json(
-        { error: 'Plaćanje nije potvrđeno. Molimo sačekajte i pokušajte ponovo.' },
-        { status: 402 }
-      );
-    }
+      // 1. KLJUCNA PROVERA: Validiraj Stripe Checkout session na serveru
+      let session;
+      try {
+        session = await stripe.checkout.sessions.retrieve(sessionId, {
+          expand: ['subscription', 'customer'],
+        });
+      } catch {
+        return NextResponse.json(
+          { error: 'Plaćanje nije pronađeno. Molimo pokušajte ponovo ili pišite na hello@ugcexecutive.com.' },
+          { status: 400 }
+        );
+      }
 
-    const subscription = typeof session.subscription === 'object' ? session.subscription : null;
-    if (!subscription || (subscription.status !== 'active' && subscription.status !== 'trialing')) {
-      return NextResponse.json(
-        { error: 'Pretplata nije aktivna. Pišite nam na hello@ugcexecutive.com.' },
-        { status: 402 }
-      );
-    }
+      if (session.mode !== 'subscription') {
+        return NextResponse.json(
+          { error: 'Nevažeća sesija plaćanja.' },
+          { status: 400 }
+        );
+      }
 
-    // Plan se IZVODI iz Stripe price-a, ne iz klijenta
-    const priceId = subscription.items.data[0]?.price?.id;
-    const plan = resolvePlanFromSubscription(subscription, priceId);
-    if (!plan) {
-      return NextResponse.json(
-        { error: 'Nepoznat plan pretplate.' },
-        { status: 400 }
-      );
-    }
+      if (session.payment_status !== 'paid') {
+        return NextResponse.json(
+          { error: 'Plaćanje nije potvrđeno. Molimo sačekajte i pokušajte ponovo.' },
+          { status: 402 }
+        );
+      }
 
-    // expires_at iz Stripe period-a (ne iz Node Date kalendara)
-    const periodEnd = getSubscriptionPeriodEnd(subscription);
-    if (!periodEnd) {
-      return NextResponse.json(
-        { error: 'Greška pri čitanju trajanja pretplate.' },
-        { status: 500 }
-      );
-    }
+      const subscription = typeof session.subscription === 'object' ? session.subscription : null;
+      if (!subscription || (subscription.status !== 'active' && subscription.status !== 'trialing')) {
+        return NextResponse.json(
+          { error: 'Pretplata nije aktivna. Pišite nam na hello@ugcexecutive.com.' },
+          { status: 402 }
+        );
+      }
 
-    const stripeCustomerId = typeof session.customer === 'string'
-      ? session.customer
-      : session.customer?.id || null;
-    const stripeSubscriptionId = subscription.id;
+      // Plan se IZVODI iz Stripe price-a, ne iz klijenta
+      const priceId = subscription.items.data[0]?.price?.id;
+      plan = resolvePlanFromSubscription(subscription, priceId);
+      if (!plan) {
+        return NextResponse.json(
+          { error: 'Nepoznat plan pretplate.' },
+          { status: 400 }
+        );
+      }
 
-    if (!stripeCustomerId) {
-      return NextResponse.json(
-        { error: 'Greška pri čitanju Stripe podataka.' },
-        { status: 500 }
-      );
+      // expires_at iz Stripe period-a (ne iz Node Date kalendara)
+      periodEnd = getSubscriptionPeriodEnd(subscription);
+      if (!periodEnd) {
+        return NextResponse.json(
+          { error: 'Greška pri čitanju trajanja pretplate.' },
+          { status: 500 }
+        );
+      }
+
+      stripeCustomerId = typeof session.customer === 'string'
+        ? session.customer
+        : session.customer?.id || null;
+      stripeSubscriptionId = subscription.id;
+
+      if (!stripeCustomerId) {
+        return NextResponse.json(
+          { error: 'Greška pri čitanju Stripe podataka.' },
+          { status: 500 }
+        );
+      }
+
+      subscriptionStatus = subscription.status === 'trialing' ? 'trialing' : 'active';
+      stripeEmail = session.customer_email || session.customer_details?.email || null;
     }
 
     // 2. Kreiraj Supabase admin client
@@ -119,22 +140,25 @@ export async function POST(request: NextRequest) {
     );
 
     // 3. Idempotentnost: ako je za ovaj subscription_id vec napravljen biznis,
-    // vrati ga. Sprecava duplikat ako se success page osvezi.
-    const { data: existingBusiness } = await supabaseAdmin
-      .from('businesses')
-      .select('id, user_id, company_name')
-      .eq('stripe_subscription_id', stripeSubscriptionId)
-      .maybeSingle();
+    // vrati ga. Sprecava duplikat ako se success page osvezi. (Samo kad ima
+    // stripeSubscriptionId - besplatna registracija nema sta da deduplicira ovde.)
+    if (stripeSubscriptionId) {
+      const { data: existingBusiness } = await supabaseAdmin
+        .from('businesses')
+        .select('id, user_id, company_name')
+        .eq('stripe_subscription_id', stripeSubscriptionId)
+        .maybeSingle();
 
-    if (existingBusiness) {
-      return NextResponse.json({
-        success: true,
-        message: 'Nalog već postoji za ovo plaćanje.',
-        userId: existingBusiness.user_id,
-        businessId: existingBusiness.id,
-        companyName: existingBusiness.company_name,
-        alreadyExisted: true,
-      });
+      if (existingBusiness) {
+        return NextResponse.json({
+          success: true,
+          message: 'Nalog već postoji za ovo plaćanje.',
+          userId: existingBusiness.user_id,
+          businessId: existingBusiness.id,
+          companyName: existingBusiness.company_name,
+          alreadyExisted: true,
+        });
+      }
     }
 
     // 4. Proveri da li email vec postoji u Auth-u
@@ -148,15 +172,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Email iz Stripe-a MORA postojati i odgovarati emailu iz forme.
-    // Bez obaveznog poklapanja, procureli session_id sa praznim email-om bi
-    // dozvolio registraciju pod bilo kojim email-om (krađa tuđe pretplate).
-    const stripeEmail = session.customer_email || session.customer_details?.email;
-    if (!stripeEmail || stripeEmail.toLowerCase() !== email.toLowerCase()) {
-      return NextResponse.json(
-        { error: 'Email iz plaćanja ne odgovara email-u iz registracije.' },
-        { status: 400 }
-      );
+    if (PAYMENTS_REQUIRED) {
+      // Email iz Stripe-a MORA postojati i odgovarati emailu iz forme.
+      // Bez obaveznog poklapanja, procureli session_id sa praznim email-om bi
+      // dozvolio registraciju pod bilo kojim email-om (krađa tuđe pretplate).
+      if (!stripeEmail || stripeEmail.toLowerCase() !== email.toLowerCase()) {
+        return NextResponse.json(
+          { error: 'Email iz plaćanja ne odgovara email-u iz registracije.' },
+          { status: 400 }
+        );
+      }
     }
 
     // 5. Kreiraj korisnika u Supabase Auth
@@ -203,7 +228,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 7. Kreiraj business profil sa Stripe-validiranim podacima
+    // 7. Kreiraj business profil (sa Stripe-validiranim podacima kad plaćanje
+    // postoji, ili bez njih dok je PAYMENTS_REQUIRED iskljucen)
     const { data: businessData, error: businessError } = await supabaseAdmin
       .from('businesses')
       .insert({
@@ -218,9 +244,9 @@ export async function POST(request: NextRequest) {
         lat: lat ?? null,
         lng: lng ?? null,
         subscription_type: plan,
-        subscription_status: subscription.status === 'trialing' ? 'trialing' : 'active',
-        subscribed_at: new Date().toISOString(),
-        expires_at: periodEnd.toISOString(),
+        subscription_status: subscriptionStatus,
+        subscribed_at: PAYMENTS_REQUIRED ? new Date().toISOString() : null,
+        expires_at: periodEnd ? periodEnd.toISOString() : null,
         stripe_customer_id: stripeCustomerId,
         stripe_subscription_id: stripeSubscriptionId,
       })
@@ -244,7 +270,7 @@ export async function POST(request: NextRequest) {
       businessId: businessData.id,
       companyName: businessData.company_name,
       plan,
-      expiresAt: periodEnd.toISOString(),
+      expiresAt: periodEnd ? periodEnd.toISOString() : null,
     });
 
   } catch (error) {

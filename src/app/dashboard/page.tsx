@@ -13,6 +13,7 @@ import VideoPlayerModal from '@/components/VideoPlayerModal';
 import ImageCropper from '@/components/ImageCropper';
 import ChatModal from '@/components/ChatModal';
 import { getPortfolioVideoType, isPortfolioVideo } from '@/lib/portfolio-media';
+import { PAYMENTS_REQUIRED } from '@/lib/payments-config';
 
 export default function DashboardPage() {
   const { currentUser, updateCreator } = useDemo();
@@ -2729,9 +2730,10 @@ function BusinessDashboard() {
   }
 
   // Paywall za biznise koji nikad nisu platili
-  const hasNeverPaid = !businessData?.subscription_type && 
+  // (isključeno dok je PAYMENTS_REQUIRED false - vidi src/lib/payments-config.ts)
+  const hasNeverPaid = PAYMENTS_REQUIRED && !businessData?.subscription_type &&
                        (!businessData?.subscription_status || businessData?.subscription_status === 'none');
-  
+
   if (hasNeverPaid) {
     return <BusinessPaywallScreen companyName={businessData?.company_name || currentUser.companyName} />;
   }

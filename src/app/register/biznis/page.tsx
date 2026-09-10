@@ -5,13 +5,19 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import ImageCropper from '@/components/ImageCropper';
 import CityAutocomplete, { City, cityLabel } from '@/components/CityAutocomplete';
+import { createClient } from '@/lib/supabase/client';
+import { useDemo } from '@/context/DemoContext';
+import { PAYMENTS_REQUIRED } from '@/lib/payments-config';
 
 export default function RegisterBusinessPage() {
   const router = useRouter();
+  const { loginAsNewBusiness } = useDemo();
   const [step, setStep] = useState<'info' | 'plan'>('info');
   const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly' | null>(null);
   const [couponCode, setCouponCode] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [isSubmittingFree, setIsSubmittingFree] = useState(false);
+  const [freeRegError, setFreeRegError] = useState<string | null>(null);
   
   // Logo upload state
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
@@ -55,9 +61,9 @@ export default function RegisterBusinessPage() {
     setCropImage(null);
   };
 
-  const handleInfoSubmit = (e: React.FormEvent) => {
+  const handleInfoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     // Validacija
     if (!formData.companyName.trim()) {
       alert('Molimo unesite naziv firme');
@@ -87,9 +93,75 @@ export default function RegisterBusinessPage() {
       alert('Morate prihvatiti uslove korišćenja i politiku privatnosti');
       return;
     }
-    
+
+    // Dok je PAYMENTS_REQUIRED isključeno (privremeno, do daljnjeg): registruj
+    // nalog odmah, bez Stripe checkout koraka. Vidi src/lib/payments-config.ts.
+    if (!PAYMENTS_REQUIRED) {
+      await registerFree();
+      return;
+    }
+
     setStep('plan');
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const registerFree = async () => {
+    setFreeRegError(null);
+    setIsSubmittingFree(true);
+    try {
+      const response = await fetch('/api/auth/register/business', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+          companyName: formData.companyName,
+          phone: formData.phone || null,
+          website: formData.website || null,
+          industry: formData.industry || null,
+          description: formData.description || null,
+          cityId: selectedCity?.id ?? null,
+          lat: selectedCity?.lat ?? null,
+          lng: selectedCity?.lng ?? null,
+        }),
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.error || 'Greška pri registraciji');
+      }
+
+      const supabase = createClient();
+      const { error: loginError } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+      if (loginError) {
+        console.error('Auto-login error:', loginError);
+      }
+
+      if (data.businessId) {
+        loginAsNewBusiness(data.businessId, formData.companyName, 'none', undefined, logoPreview || undefined);
+      }
+
+      if (logoPreview && data.businessId) {
+        try {
+          await fetch(`/api/business/${data.businessId}/logo`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ logo: logoPreview }),
+          });
+        } catch (logoErr) {
+          console.error('Error uploading logo:', logoErr);
+        }
+      }
+
+      router.refresh();
+      router.push('/dashboard');
+    } catch (err) {
+      setFreeRegError(err instanceof Error ? err.message : 'Greška pri registraciji');
+      setIsSubmittingFree(false);
+    }
   };
 
   const handlePlanSelect = (plan: 'monthly' | 'yearly') => {
@@ -270,7 +342,7 @@ export default function RegisterBusinessPage() {
         <div className="text-center mb-10">
           <div className="inline-flex items-center gap-2 bg-primary/10 text-primary px-4 py-2 rounded-full text-sm mb-6">
             <span className="w-2 h-2 bg-primary rounded-full"></span>
-            Korak 1 od 2
+            {PAYMENTS_REQUIRED ? 'Korak 1 od 2' : 'Registracija'}
           </div>
           <h1 className="text-3xl font-light mb-3">Registruj se kao brend</h1>
           <p className="text-muted">Pronađi savršene UGC kreatore za tvoj brend</p>
@@ -461,14 +533,29 @@ export default function RegisterBusinessPage() {
             </span>
           </label>
 
+          {freeRegError && (
+            <div className="bg-error/10 border border-error/20 rounded-xl p-4">
+              <p className="text-sm text-error">{freeRegError}</p>
+            </div>
+          )}
+
           <button
             type="submit"
-            className="w-full py-4 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+            disabled={isSubmittingFree}
+            className="w-full py-4 bg-primary text-white rounded-xl font-medium hover:bg-primary/90 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
           >
-            Nastavi na izbor plana
-            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
-            </svg>
+            {isSubmittingFree ? (
+              'Kreiram nalog...'
+            ) : PAYMENTS_REQUIRED ? (
+              <>
+                Nastavi na izbor plana
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-5 h-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                </svg>
+              </>
+            ) : (
+              'Registruj se'
+            )}
           </button>
         </form>
 
