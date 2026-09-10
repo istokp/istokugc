@@ -26,6 +26,41 @@ function plural(n: number, one: string, few: string, many: string) {
   return many;
 }
 
+// Gradovi u blizini (npr. Beograd + okolina) se projektuju skoro na istu tačku,
+// pa se krugovi preklapaju. Ova relaksacija ih razmiče (kolizija) dok ih blaga
+// "opruga" drži blizu stvarne geografske pozicije, umesto da se čitaju kao gomila.
+function declutter<T extends { x: number; y: number; r: number }>(points: T[]): T[] {
+  const nodes = points.map((p) => ({ ...p, ox: p.x, oy: p.y }));
+  const padding = 3;
+
+  for (let iter = 0; iter < 300; iter++) {
+    for (const n of nodes) {
+      n.x += (n.ox - n.x) * 0.02;
+      n.y += (n.oy - n.y) * 0.02;
+    }
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const a = nodes[i], b = nodes[j];
+        let dx = b.x - a.x;
+        let dy = b.y - a.y;
+        const dist = Math.sqrt(dx * dx + dy * dy) || 0.01;
+        const minDist = a.r + b.r + padding;
+        if (dist < minDist) {
+          const overlap = (minDist - dist) / 2;
+          dx /= dist;
+          dy /= dist;
+          a.x -= dx * overlap;
+          a.y -= dy * overlap;
+          b.x += dx * overlap;
+          b.y += dy * overlap;
+        }
+      }
+    }
+  }
+
+  return nodes as unknown as T[];
+}
+
 export default function CreatorsMap() {
   const router = useRouter();
   const [locations, setLocations] = useState<LocationStat[]>([]);
@@ -58,16 +93,15 @@ export default function CreatorsMap() {
     [locations]
   );
 
-  const points = useMemo(
-    () =>
-      locations.map((loc) => {
-        const [x, y] = project(loc.lng, loc.lat);
-        const minR = 14, maxR = 34;
-        const r = minR + (Math.sqrt(loc.count) / Math.sqrt(maxCount)) * (maxR - minR);
-        return { ...loc, x, y, r };
-      }),
-    [locations, project, maxCount]
-  );
+  const points = useMemo(() => {
+    const raw = locations.map((loc) => {
+      const [x, y] = project(loc.lng, loc.lat);
+      const minR = 14, maxR = 34;
+      const r = minR + (Math.sqrt(loc.count) / Math.sqrt(maxCount)) * (maxR - minR);
+      return { ...loc, x, y, r };
+    });
+    return declutter(raw);
+  }, [locations, project, maxCount]);
 
   const total = useMemo(() => locations.reduce((s, l) => s + l.count, 0), [locations]);
 
