@@ -8,7 +8,7 @@ import Image from 'next/image';
 import ImageCropper from '@/components/ImageCropper';
 import { createClient } from '@/lib/supabase/client';
 import { uploadPortfolioFileToR2, safeJson } from '@/lib/upload-client';
-import { compressImage } from '@/lib/image-compress';
+import { compressImage, compressThumbnailToDataUrl } from '@/lib/image-compress';
 import { VIDEO_PLACEHOLDER_THUMBNAIL } from '@/lib/portfolio-media';
 import CityAutocomplete, { City, cityLabel } from '@/components/CityAutocomplete';
 import {
@@ -62,11 +62,14 @@ export default function RegisterCreatorPage() {
   const [showCropper, setShowCropper] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const portfolioInputRef = useRef<HTMLInputElement>(null);
-  
+  const portfolioThumbnailInputRef = useRef<HTMLInputElement>(null);
+
   // Portfolio state
   const [portfolioItems, setPortfolioItems] = useState<PortfolioItem[]>([]);
   const [portfolioUrl, setPortfolioUrl] = useState('');
   const [portfolioDescription, setPortfolioDescription] = useState('');
+  const [portfolioThumbnail, setPortfolioThumbnail] = useState<string | null>(null);
+  const [isCompressingPortfolioThumbnail, setIsCompressingPortfolioThumbnail] = useState(false);
   const [portfolioError, setPortfolioError] = useState('');
   const [showAddPortfolio, setShowAddPortfolio] = useState(true);
   const [acceptTerms, setAcceptTerms] = useState(false);
@@ -211,6 +214,26 @@ export default function RegisterCreatorPage() {
     setShowAddPortfolio(false);
   };
 
+  const handlePortfolioThumbnailSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (portfolioThumbnailInputRef.current) portfolioThumbnailInputRef.current.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setPortfolioError('Sličica mora biti slika (JPG, PNG, WebP...)');
+      return;
+    }
+    setIsCompressingPortfolioThumbnail(true);
+    setPortfolioError('');
+    try {
+      const dataUrl = await compressThumbnailToDataUrl(file);
+      setPortfolioThumbnail(dataUrl);
+    } catch {
+      setPortfolioError('Greška pri obradi sličice');
+    } finally {
+      setIsCompressingPortfolioThumbnail(false);
+    }
+  };
+
   // Handle portfolio URL add
   const handleAddPortfolioUrl = () => {
     if (!portfolioUrl.trim()) {
@@ -256,14 +279,15 @@ export default function RegisterCreatorPage() {
       id: `url-${Date.now()}`,
       type,
       url: portfolioUrlTrimmed,
-      thumbnail,
+      thumbnail: portfolioThumbnail || thumbnail,
       description: portfolioDescription,
       platform,
     };
-    
+
     setPortfolioItems([...portfolioItems, newItem]);
     setPortfolioUrl('');
     setPortfolioDescription('');
+    setPortfolioThumbnail(null);
     setPortfolioError('');
     setShowAddPortfolio(false);
   };
@@ -909,6 +933,37 @@ export default function RegisterCreatorPage() {
                           placeholder="Opis projekta (opciono)"
                           className="w-full px-4 py-3 border border-border rounded-xl focus:outline-none focus:border-primary bg-white text-sm"
                         />
+                        <div className="flex items-center gap-3">
+                          {portfolioThumbnail && (
+                            <div className="w-12 h-12 relative rounded-lg overflow-hidden bg-secondary flex-shrink-0">
+                              <Image src={portfolioThumbnail} alt="Sličica" fill className="object-cover" unoptimized />
+                            </div>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => portfolioThumbnailInputRef.current?.click()}
+                            disabled={isCompressingPortfolioThumbnail}
+                            className="px-3 py-2 border border-border rounded-lg text-xs hover:bg-secondary transition-colors disabled:opacity-50"
+                          >
+                            {isCompressingPortfolioThumbnail ? 'Obrađujem...' : portfolioThumbnail ? 'Promeni sličicu' : 'Sopstvena sličica (opciono)'}
+                          </button>
+                          {portfolioThumbnail && (
+                            <button
+                              type="button"
+                              onClick={() => setPortfolioThumbnail(null)}
+                              className="text-xs text-error hover:underline"
+                            >
+                              Ukloni
+                            </button>
+                          )}
+                          <input
+                            ref={portfolioThumbnailInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={handlePortfolioThumbnailSelect}
+                            className="hidden"
+                          />
+                        </div>
                         <button
                           type="button"
                           onClick={handleAddPortfolioUrl}

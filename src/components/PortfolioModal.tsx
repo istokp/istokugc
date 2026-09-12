@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { uploadPortfolioFileToR2 } from '@/lib/upload-client';
-import { compressImage } from '@/lib/image-compress';
+import { compressImage, compressThumbnailToDataUrl } from '@/lib/image-compress';
 import { VIDEO_PLACEHOLDER_THUMBNAIL } from '@/lib/portfolio-media';
 import {
   MAX_IMAGE_BYTES,
@@ -93,7 +93,10 @@ export default function PortfolioModal({ isOpen, onClose, onAdd, creatorId }: Po
   const [selectedPlatform, setSelectedPlatform] = useState<'instagram' | 'tiktok' | 'youtube' | 'other'>('instagram');
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [customThumbnail, setCustomThumbnail] = useState<string | null>(null);
+  const [isCompressingThumbnail, setIsCompressingThumbnail] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const thumbnailInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -101,12 +104,32 @@ export default function PortfolioModal({ isOpen, onClose, onAdd, creatorId }: Po
     setUrl(value);
     setUrlError('');
     setUrlPreview(null);
-    
+
     if (value.trim()) {
       const parsed = parseMediaUrl(value);
       if (parsed) {
         setUrlPreview({ type: parsed.type, thumbnail: parsed.thumbnail });
       }
+    }
+  };
+
+  const handleCustomThumbnailSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (thumbnailInputRef.current) thumbnailInputRef.current.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setUrlError('Sličica mora biti slika (JPG, PNG, WebP...)');
+      return;
+    }
+    setIsCompressingThumbnail(true);
+    setUrlError('');
+    try {
+      const dataUrl = await compressThumbnailToDataUrl(file);
+      setCustomThumbnail(dataUrl);
+    } catch {
+      setUrlError('Greška pri obradi sličice');
+    } finally {
+      setIsCompressingThumbnail(false);
     }
   };
 
@@ -126,7 +149,7 @@ export default function PortfolioModal({ isOpen, onClose, onAdd, creatorId }: Po
       id: `url-${Date.now()}`,
       type: parsed.type,
       url: parsed.originalUrl, // pravi link (za playback na profilu); thumbnail je preview
-      thumbnail: parsed.thumbnail,
+      thumbnail: customThumbnail || parsed.thumbnail,
       originalUrl: parsed.originalUrl,
       description: urlDescription.trim() || undefined,
       platform: parsed.type as 'instagram' | 'tiktok' | 'youtube', // Platform is same as type for URLs
@@ -252,6 +275,8 @@ export default function PortfolioModal({ isOpen, onClose, onAdd, creatorId }: Po
     setActiveTab('url');
     setIsDragging(false);
     setIsUploading(false);
+    setCustomThumbnail(null);
+    setIsCompressingThumbnail(false);
     onClose();
   };
 
@@ -327,9 +352,9 @@ export default function PortfolioModal({ isOpen, onClose, onAdd, creatorId }: Po
                   <p className="text-sm text-muted mb-2">Pregled:</p>
                   <div className="flex items-center gap-4">
                     <div className="w-20 h-20 relative rounded-lg overflow-hidden bg-secondary">
-                      {urlPreview.thumbnail.startsWith('http') ? (
+                      {customThumbnail || urlPreview.thumbnail.startsWith('http') || urlPreview.thumbnail.startsWith('data:image') ? (
                         <Image
-                          src={urlPreview.thumbnail}
+                          src={customThumbnail || urlPreview.thumbnail}
                           alt="Preview"
                           fill
                           className="object-cover"
@@ -353,6 +378,49 @@ export default function PortfolioModal({ isOpen, onClose, onAdd, creatorId }: Po
                       </p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Sopstvena sličica - opciono, samo za IG/TikTok gde nemamo pravi thumbnail */}
+              {urlPreview && (urlPreview.type === 'instagram' || urlPreview.type === 'tiktok') && (
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Sopstvena sličica <span className="text-muted font-normal">(opciono)</span>
+                  </label>
+                  <div className="flex items-center gap-3">
+                    {customThumbnail && (
+                      <div className="w-14 h-14 relative rounded-lg overflow-hidden bg-secondary flex-shrink-0">
+                        <Image src={customThumbnail} alt="Sličica" fill className="object-cover" unoptimized />
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => thumbnailInputRef.current?.click()}
+                      disabled={isCompressingThumbnail}
+                      className="px-4 py-2 border border-border rounded-lg text-sm hover:bg-secondary transition-colors disabled:opacity-50"
+                    >
+                      {isCompressingThumbnail ? 'Obrađujem...' : customThumbnail ? 'Promeni sličicu' : 'Otpremi sličicu'}
+                    </button>
+                    {customThumbnail && (
+                      <button
+                        type="button"
+                        onClick={() => setCustomThumbnail(null)}
+                        className="text-sm text-error hover:underline"
+                      >
+                        Ukloni
+                      </button>
+                    )}
+                    <input
+                      ref={thumbnailInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleCustomThumbnailSelect}
+                      className="hidden"
+                    />
+                  </div>
+                  <p className="text-xs text-muted mt-1">
+                    Bez ovoga koristi se generički prikaz - {urlPreview.type === 'instagram' ? 'Instagram' : 'TikTok'} ne dozvoljava automatsko preuzimanje pravog thumbnail-a.
+                  </p>
                 </div>
               )}
 
